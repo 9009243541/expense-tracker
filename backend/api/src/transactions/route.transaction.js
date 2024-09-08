@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const authHelper = require("../../helper/authHelper");
+const authHelper = require("../../midleware/authHelper");
 const transactionController = require("./constroller.transaction");
 const validate = require("../../midleware/validation.midleware");
 const { expenseSchema } = require("../ValidationSchema/validation.transaction");
@@ -11,9 +11,14 @@ router.post(
   transactionController.addTransaction
 );
 router.get(
-  "/getTransaction",
+  "/getAllTransactions",
   authHelper,
   transactionController.getTransections
+);
+router.get(
+  "/getTransactionByUserId/:userId",
+  authHelper,
+  transactionController.getTransactionByUserId
 );
 router.get(
   "/getFilterTransactions",

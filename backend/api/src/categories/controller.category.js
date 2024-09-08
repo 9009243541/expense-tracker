@@ -6,15 +6,6 @@ const categoryController = {};
 categoryController.addCategory = async (req, res) => {
   try {
     const { CategoryName, description } = req.body;
-
-    // if (!CategoryName) {
-    //   return res.send({
-    //     status: "Error",
-    //     msg: "Category name is required",
-    //     data: null,
-    //   });
-    // }
-
     const newCategory = await categoryService.addCategory({
       CategoryName,
       description,
@@ -36,9 +27,9 @@ categoryController.addCategory = async (req, res) => {
 
 categoryController.getCategories = async (req, res) => {
   try {
-    // const { id } = req.params;
-    const categories = await categoryService.getCategories();
-
+    const { id } = req.params;
+    const categories = await categoryService.getCategories(id);
+    // console.log(cate)
     return res.send({
       status: "OK",
       msg: "Categories retrieved successfully",

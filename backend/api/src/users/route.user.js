@@ -1,5 +1,6 @@
 const router = require("express").Router();
-const autHelper = require("../../helper/authHelper");
+const authHelper = require("../../midleware/authHelper");
+
 const validate = require("../../midleware/validation.midleware");
 const {
   registerSchema,
@@ -9,6 +10,6 @@ const userController = require("./controller.user");
 
 router.post("/register", validate(registerSchema), userController.registerUser);
 router.post("/login", validate(loginSchema), userController.loginUser);
-router.get("/getUser", autHelper, userController.getUser);
+router.get("/getUser", authHelper, userController.getUser);
 
 module.exports = router;

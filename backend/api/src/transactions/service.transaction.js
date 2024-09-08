@@ -28,9 +28,6 @@ transactionService.getTransections = async (
   { filters },
   { limit, skip, type, startDate, endDate, minAmount, maxAmount }
 ) => {
-  // if (paymentMode) {
-  //   filters["paymentMode"] = { $in: cash };
-  // }
   return await Transaction.find(
     {
       filters,
@@ -38,7 +35,17 @@ transactionService.getTransections = async (
     },
     {},
     { limit, skip, type, startDate, endDate, minAmount, maxAmount }
-  );
+  )
+    .populate("paymentMode", "paymentMode")
+    .populate("expenseCategory", "CategoryName");
+};
+transactionService.getTransactionByUserId = async (
+  { userId },
+  { page, limit }
+) => {
+  return await Transaction.find({ userId }, {}, { page, limit })
+    .populate("paymentMode", "paymentMode")
+    .populate("expenseCategory", "CategoryName");
 };
 transactionService.filterTransactions = async (userId, filterOption) => {
   const {
@@ -106,17 +113,16 @@ transactionService.filterTransactions = async (userId, filterOption) => {
 
   // Search by keyword in remark or category
   if (searchKeyword) {
-    query.$or = [
-      { remark: { $regex: searchKeyword, $options: "i" } },
-      { expenseCategory: { $regex: searchKeyword, $options: "i" } },
-    ];
+    query.$or = [{ remark: { $regex: searchKeyword, $options: "i" } }];
   }
 
   try {
-    let transactions = await Transaction.find(query);
+    let transactions = await Transaction.find(query)
+      .populate("paymentMode", "paymentMode")
+      .populate("expenseCategory", "CategoryName");
     return { status: "OK", data: transactions };
   } catch (err) {
-    console.log(err);
+    // console.log(err);
     return { status: "ERR", data: null, error: err };
   }
 };

@@ -1,7 +1,8 @@
 const { date } = require("joi");
-const userController = require("../users/controller.user");
+
 const transactionService = require("./service.transaction");
-// const categoryService = require("../categories/service.category");
+const categoryService = require("../categories/service.category");
+const paymentModeService = require("../paymentMode/service.paymentMode");
 const transactionController = {};
 transactionController.addTransaction = async (req, res) => {
   try {
@@ -14,8 +15,16 @@ transactionController.addTransaction = async (req, res) => {
       necessary,
       remark,
     } = req.body;
-    // const CategoriesData = await categoryService.getCategories();
-    // console.log(CategoriesData[0]._id, "cate");
+    const CategoriesData = await categoryService.getCategoryById(
+      expenseCategory
+    );
+    const paymentModeData = await paymentModeService.getPaymentModeById(
+      paymentMode
+    );
+
+    const categoryName = CategoriesData?.CategoryName;
+    const paymentModeType = paymentModeData?.paymentMode;
+
     const transactionData = await transactionService.addTransaction({
       amount,
       date,
@@ -27,10 +36,23 @@ transactionController.addTransaction = async (req, res) => {
       userId: req?._id,
     });
 
+    const responseData = {
+      ...transactionData.toObject(),
+      paymentMode: {
+        _id: paymentMode,
+        paymentMode: paymentModeType,
+      },
+      // Convert Mongoose document to plain JS object
+      expenseCategory: {
+        _id: expenseCategory, // The original expenseCategory ID
+        name: categoryName, // The fetched category name
+      },
+    };
+
     return res.send({
       status: "OK",
       msg: "Amount, date, paymentMode, expenseCategory, essential and remark is created successfully",
-      data: transactionData,
+      data: responseData,
     });
   } catch (error) {
     console.log(error, "errorerror");
@@ -43,8 +65,8 @@ transactionController.addTransaction = async (req, res) => {
 };
 transactionController.getTransections = async (req, res) => {
   try {
-    const userId = req?._id;
-
+    const userId = req._id;
+    console.log(req._id, "getTransactionParUserId");
     let { page, limit } = req.query;
     // if (limit > 50) limit = 50;
     // const skip = (page - 1) * limit;
@@ -60,13 +82,7 @@ transactionController.getTransections = async (req, res) => {
 
     // Construct filters based on query parameters
     const filters = { userId };
-    // if (date) {
-    //   const startDate = new Date(date);
-    //   console.log(startDate)
-    //   const endDate = new Date(date);
-    //   endDate.setHours(23, 59, 59, 999); // Set end of the day
-    //   query.createdAt = { $gte: startDate, $lte: endDate };
-    // }
+    // console.log(filters, "filters");
 
     const getTransactionData = await transactionService.getTransections(
       filters,
@@ -75,11 +91,16 @@ transactionController.getTransections = async (req, res) => {
         skip,
       }
     );
+    const transactionsWithDetails = getTransactionData.map((transaction) => ({
+      ...transaction.toObject(),
+      paymentMode: transaction.paymentMode?.paymentMode || "Unknown", // Convert Mongoose document to plain object
+      expenseCategory: transaction.expenseCategory?.CategoryName || "Unknown", // Replace ID with category name
+    }));
     return res.send({
       status: "OK",
       msg: " transaction retrived succeessfully",
       length: getTransactionData.length,
-      data: getTransactionData,
+      data: transactionsWithDetails,
     });
   } catch (error) {
     return res.send({
@@ -89,11 +110,64 @@ transactionController.getTransections = async (req, res) => {
     });
   }
 };
-// Helper function to convert dd-mm-yyyy to a valid Date object
-// const parseDate = (dateString) => {
-//   const [day, month, year] = dateString.split("-");
-//   return new Date(`${year}-${month}-${day}`);
-// };
+
+transactionController.getTransactionByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    let { page, limit } = req.query;
+    // if (limit > 50) limit = 50;
+    // const skip = (page - 1) * limit;
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+
+    // Validate page and limit
+    if (isNaN(page) || page < 1) page = 1;
+    if (isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
+
+    const skip = (page - 1) * limit;
+
+    if (!userId) {
+      return res.send({ status: "Err", msg: "Invalid userId", data: null });
+    }
+    const getTransactionDataByUserId =
+      await transactionService.getTransactionByUserId(
+        { userId },
+        { skip, limit }
+      );
+    // .populate("expenseCategory", "CategoryName");
+    if (!getTransactionDataByUserId.length) {
+      return res.send({
+        status: "Err",
+        msg: "No transactions found for the user",
+        data: null,
+      });
+    }
+
+    const transactionsWithDetails = getTransactionDataByUserId.map(
+      (transaction) => ({
+        ...transaction.toObject(), // Convert Mongoose document to plain object
+        paymentMode: transaction.paymentMode?.paymentMode || "Unknown",
+        expenseCategory: transaction.expenseCategory?.CategoryName || "Unknown", // Replace ID with category name
+      })
+    );
+    console.log(transactionsWithDetails, "transactionsWithCategoryName");
+    res.send({
+      status: "OK",
+      msg: "Transactions get sucessfully",
+      length: transactionsWithDetails.length,
+      data: transactionsWithDetails,
+    });
+  } catch (error) {
+    console.log(error);
+    res.send({
+      status: "Error",
+      msg: "Something went wrong",
+      data: null,
+    });
+  }
+};
+
 transactionController.getFilterTransactions = async (req, res) => {
   const userId = req?._id;
 
@@ -167,11 +241,18 @@ transactionController.getFilterTransactions = async (req, res) => {
       userId,
       filterOptions
     );
-
+    const transactionsWithDetails = filteredTransactions.data.map(
+      (transaction) => ({
+        ...transaction.toObject(), // Convert Mongoose document to plain object
+        paymentMode: transaction.paymentMode?.paymentMode || "Unknown",
+        expenseCategory: transaction.expenseCategory?.CategoryName || "Unknown", // Replace ID with category name
+      })
+    );
     return res.send({
       status: "OK",
       msg: "Transactions filtered successfully",
-      data: filteredTransactions.data,
+      length: transactionsWithDetails.length,
+      data: transactionsWithDetails,
     });
   } catch (err) {
     console.log(err);
@@ -181,22 +262,14 @@ transactionController.getFilterTransactions = async (req, res) => {
 transactionController.updateTransaction = async (req, res) => {
   try {
     const { id } = req.params;
+
     const { amount, date, paymentMode, expenseCategory, essential, remark } =
       req.body;
-    if (
-      !amount ||
-      !date ||
-      !paymentMode ||
-      !expenseCategory ||
-      !essential ||
-      !remark
-    ) {
-      return res.send({
-        status: "Error",
-        msg: "Amount, date, paymentMode, expenseCategory, essential and remark are required ",
-        data: null,
-      });
-    }
+    const CategoriesUpdateData = await categoryService.getCategoryById(
+      expenseCategory
+    );
+    const categoryName = CategoriesUpdateData?.CategoryName;
+    // console.log(CategoriesUpdateData,"CategoriesUpdateData");
     const updatedTransactionData = await transactionService.updateTransaction(
       { _id: id },
       { amount, date, paymentMode, expenseCategory, essential, remark },
@@ -210,11 +283,18 @@ transactionController.updateTransaction = async (req, res) => {
         data: null,
       });
     }
+    const responseData = {
+      ...updatedTransactionData.toObject(), // Convert Mongoose document to plain JS object
+      expenseCategory: {
+        _id: expenseCategory, // The original expenseCategory ID
+        name: categoryName, // The fetched category name
+      },
+    };
 
     return res.send({
       status: "OK",
       msg: "Transaction update successfully",
-      data: updatedTransactionData,
+      data: responseData,
     });
   } catch (error) {
     return res.send({
@@ -233,13 +313,13 @@ transactionController.deleteTransaction = async (req, res) => {
     if (!isExistTransaction) {
       res.send({
         status: "Erorr",
-        msg: "transaction not found",
+        msg: "Transaction not found",
       });
     }
     if (isExistTransaction?.isDeleted) {
       res.send({
         status: "Erorr",
-        msg: "transaction is already deleted",
+        msg: "Transaction already deleted",
         data: isExistTransaction._id,
       });
     }

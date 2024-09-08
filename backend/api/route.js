@@ -1,8 +1,10 @@
 const userRoute = require("./src/users/route.user");
 const transactionRoute = require("./src/transactions/route.transaction");
 const categories = require("./src/categories/route.category");
+const paymentMode = require("./src/paymentMode/route.paymentMode");
 const router = require("express").Router();
 router.use("/user", userRoute);
 router.use("/transaction", transactionRoute);
 router.use("/category", categories);
+router.use("/paymentMode", paymentMode);
 module.exports = router;

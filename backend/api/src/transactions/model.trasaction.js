@@ -11,16 +11,13 @@ const transactionSchema = mongoose.Schema(
       required: true,
     },
     paymentMode: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId, // Reference to another model
+      ref: "paymentDetail", // The name of the model being referenced
       required: true,
     },
-    // expenseCategory: {
-    //   type: mongoose.Schema.Types.ObjectId, // Reference to another model
-    //   ref: "Category", // The name of the model being referenced
-    //   required: true,
-    // },
     expenseCategory: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId, // Reference to another model
+      ref: "Category", // The name of the model being referenced
       required: true,
     },
     necessary: {

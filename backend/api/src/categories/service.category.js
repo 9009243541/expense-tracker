@@ -10,7 +10,9 @@ categoryService.addCategory = async (categoryData) => {
 categoryService.getCategories = async () => {
   return await Category.find();
 };
-
+categoryService.getCategoryById = async (id) => {
+  return await Category.findById(id);
+};
 // categoryService.getCategoriesDataById = async (id) => {
 //   return await Category.findById(id);
 // };
